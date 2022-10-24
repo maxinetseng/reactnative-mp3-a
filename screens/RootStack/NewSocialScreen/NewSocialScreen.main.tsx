@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Platform, View } from "react-native";
+import { Platform, Image, View } from "react-native";
 import { Appbar, TextInput, Snackbar, Button } from "react-native-paper";
 import { getFileObjectAsync, uuid } from "../../../Utils";
 
@@ -14,9 +14,14 @@ import { styles } from "./NewSocialScreen.styles";
 
 import firebase from "firebase/app";
 import "firebase/firestore";
+import { collection, addDoc, setDoc, getDoc, getFirestore, doc} from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL} from "firebase/storage";
+import { getApp } from "firebase/app";
 import { SocialModel } from "../../../models/social";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../RootStackScreen";
+import { ScrollView } from "react-native-gesture-handler";
+import { NavigationContainer } from "@react-navigation/native";
 
 interface Props {
   navigation: StackNavigationProp<RootStackParamList, "NewSocialScreen">;
@@ -35,20 +40,99 @@ export default function NewSocialScreen({ navigation }: Props) {
   
   */
 
+  const [eventDate, setEventDate] = useState<any>()
+  const [eventTime, setEventTime] = useState(0)
+  const [eventDescription, setEventDescription] = useState('')
+  const [eventImage, setEventImage] = useState('')
+  const [eventLocation, setEventLocation] = useState('')
+  const [eventName, setEventName] = useState('')
+
+  const [text, onChangeText] = useState("");
+  const [number, onChangeNumber] = useState(null);
+
   // TODO: Follow the Expo Docs to implement the ImagePicker component.
   // https://docs.expo.io/versions/latest/sdk/imagepicker/
+
+  const imagePicker = async () =>{
+    // No permissions request is necessary for launching the image library
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+  
+    console.log(result);
+
+    if (!result.cancelled) {
+      setEventImage(result.uri);
+    };
+  }
+
+useEffect(
+  () => {
+    imagePicker();
+  },
+  [
+  eventImage
+  ]
+)
 
   // TODO: Follow the GitHub Docs to implement the react-native-modal-datetime-picker component.
   // https://github.com/mmazzarolo/react-native-modal-datetime-picker
 
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+
+  const showDatePicker = () => {
+    setDatePickerVisibility(true);
+  };
+
+  const hideDatePicker = () => {
+    setDatePickerVisibility(false);
+  };
+
+  const handleConfirm = (date: Date) => {
+    console.warn("A date has been picked: ", date);
+    date.setSeconds(0);
+    setEventDate(date);
+    hideDatePicker();
+  };
+
   // TODO: Follow the SnackBar Docs to implement the Snackbar component.
   // https://callstack.github.io/react-native-paper/snackbar.html
+  
+  const MyComponent = () => {
+    const [visible, setVisible] = useState(false);
+    const onToggleSnackBar = () => setVisible(!visible);
+    const onDismissSnackBar = () => setVisible(false);
+  
+    return (
+      <View style={styles.container}>
+        <Button onPress={onToggleSnackBar}>{visible? 'Hide' : 'Show'}</Button>
+        <Snackbar
+          visible={visible}
+          onDismiss={onDismissSnackBar}
+          action={{
+            label: 'Undo',
+            onPress: () => {
+              //do something
+            },
+          }}>
+          Hey there! I'm a Snackbar.
+        </Snackbar>
+      </View>
+    );
+  };
 
   const saveEvent = async () => {
     // TODO: Validate all fields (hint: field values should be stored in state variables).
     // If there's a field that is missing data, then return and show an error
     // using the Snackbar.
 
+    if((!eventDate) || (eventDescription == "") || (eventImage == "") || 
+      (eventLocation == "") || (eventName == "")){
+      throw EvalError
+    }       
     // Otherwise, proceed onwards with uploading the image, and then the object.
 
     try {
@@ -67,14 +151,40 @@ export default function NewSocialScreen({ navigation }: Props) {
       // download URL into Firestore (where our data itself is stored). Make sure to
       // do this using an async keyword.
 
+      //get access to socials collection 
+      //store
+      //create reference like storageRef
+      //when given downloadURL 
+      const object = await getFileObjectAsync(eventImage);
+      const db = getFirestore();
+      const socialsCollection = collection(db, "socials");
+      const socialRef = doc(socialsCollection);
+      const storage = getStorage(getApp());
+      const storageRef = ref(storage, socialRef.id + ".jpg");
+      const result = await uploadBytes(storageRef, object as Blob);
+      const downloadURL = await getDownloadURL(result.ref);
+      const socialDoc: SocialModel = {
+        eventName: eventName,
+        eventDate: eventDate?.getTime(),
+        eventLocation: eventLocation,
+        eventDescription: eventDescription,
+        eventImage: downloadURL,
+      };
+      // const socialRef = await addDoc(collection(db, "socials", eventName), {
+      //   eventName: "eventName"
+      // });
+      await setDoc(socialRef, socialDoc);
+      console.log("Finished social creation.");
+      navigation.goBack();
+
       // (3) Construct & write the social model to the "socials" collection in Firestore.
       // The eventImage should be the downloadURL that we got from (3).
       // Make sure to do this using an async keyword.
-      
+
       // (4) If nothing threw an error, then go back to the previous screen.
       //     Otherwise, show an error.
 
-    } catch (e) {
+    } catch(e: any) {
       console.log("Error while writing social:", e);
     }
   };
@@ -89,18 +199,63 @@ export default function NewSocialScreen({ navigation }: Props) {
   };
 
   return (
-    <>
+    <ScrollView>
       <Bar />
-      <View style={{ ...styles.container, padding: 20 }}>
+        <View style={{ ...styles.container, padding: 20 }}>
         {/* TextInput */}
+        <TextInput
+          autoComplete="false"
+          mode = "flat"
+          label = "Event Name"
+          value = {eventName}
+          onChangeText = {(eventName) => setEventName(eventName)}
+        />
         {/* TextInput */}
+        <TextInput  
+          autoComplete="false"
+          mode = "flat"
+          label = "Event Location"
+          value = {eventLocation}
+          onChangeText = {(eventLocation) => setEventLocation(eventLocation)}
+        />
         {/* TextInput */}
+        <TextInput
+          autoComplete = "false"
+          mode = "flat"
+          label = "Text Description"
+          value = {eventDescription}
+          onChangeText = {(eventDescription) => setEventDescription(eventDescription)}
+        />
         {/* Button */}
-        {/* Button */}
-        {/* Button */}
+        <View>
+        {/* <Button mode="outlined" onPress={showDatePicker}>
+          Choose a Date */}
+        <Button onPress={showDatePicker}>
+          {eventDate ? eventDate.toUTCString() : "Choose a date"}
+        </Button>
+        <DateTimePickerModal
+            isVisible={isDatePickerVisible}
+            mode="datetime"
+            onConfirm={handleConfirm}
+            onCancel={hideDatePicker}
+          />
+        </View>
         {/* DateTimePickerModal */}
+        <View /*style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}*/>
+        <Button mode="outlined" onPress={imagePicker}>
+          {eventImage? 'Change Image': 'Pick an Image'}
+        </Button>
+          {<Image source={{ uri: eventImage }} style={{ width: 200, height: 200 }} />}
+        </View>
+        {/* Button */}
+        <View /*style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}*/>
+          <Button mode="outlined" onPress={saveEvent}>
+            Save Event
+          </Button>
+        </View>
+        {/* Button */}
         {/* Snackbar */}
       </View>
-    </>
+    </ScrollView>
   );
 }

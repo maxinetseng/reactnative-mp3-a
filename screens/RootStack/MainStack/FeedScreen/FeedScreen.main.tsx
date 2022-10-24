@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, FlatList } from "react-native";
+import { Text, View, FlatList } from "react-native";
 import { Appbar, Card } from "react-native-paper";
 import firebase from "firebase/app";
 import "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { SocialModel } from "../../../../models/social.js";
 import { styles } from "./FeedScreen.styles";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -31,11 +32,12 @@ export default function FeedScreen({ navigation }: Props) {
     When we call useState(), we can define the type of the state
     variable using something like this:
         const [myList, setMyList] = useState<MyModelType[]>([]); */
+  const [socialList, setSocialList] = useState<SocialModel[]>([]);
 
   /*
     TODO: In a useEffect hook, start a Firebase observer to listen to the "socials" node in Firestore.
     Read More: https://firebase.google.com/docs/firestore/query-data/listen
-  
+
     Reminders:
       1. Make sure you start a listener that's attached to this node!
       2. The onSnapshot method returns a method. Make sure to return the method
@@ -47,24 +49,33 @@ export default function FeedScreen({ navigation }: Props) {
           load socials on this screen.
   */
 
+
   const renderItem = ({ item }: { item: SocialModel }) => {
     // TODO: Return a Card corresponding to the social object passed in
     // to this function. On tapping this card, navigate to DetailScreen
     // and pass this social.
+
 
     return null;
   };
 
   const NavigationBar = () => {
     // TODO: Return an AppBar, with a title & a Plus Action Item that goes to the NewSocialScreen.
-    return null;
+    return (
+      <Appbar.Header>
+        <Appbar.Action onPress={() => navigation.navigate("NewSocialScreen")} icon="plus" />
+        <Appbar.Content title="Socials" />
+      </Appbar.Header>
+    );
   };
 
   return (
     <>
       {/* Embed your NavigationBar here. */}
+      <NavigationBar/>
       <View style={styles.container}>
         {/* Return a FlatList here. You'll need to use your renderItem method. */}
+        <Text>hey</Text>
       </View>
     </>
   );
